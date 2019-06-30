@@ -170,3 +170,4 @@
 
 [Components.AARCH64]
   Silicon/Marvell/Armada7k8k/AcpiTables/Armada80x0McBin/AcpiTables.inf
+  OptionRomPkg/AMDGop/AMDGop.inf
