@@ -349,7 +349,7 @@
 !if $(TARGET) == RELEASE
   gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000000
 !else
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8000000F
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8000004F
 !endif
 
   #
