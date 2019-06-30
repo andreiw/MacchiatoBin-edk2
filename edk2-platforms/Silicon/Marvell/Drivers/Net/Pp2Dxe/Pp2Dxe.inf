@@ -1,3 +1,5 @@
+#
+# Copyright (c) 2019, Andrei Warkentin <andrey.warkentin@gmail.com>
 # Copyright (C) 2016 Marvell International Ltd.
 #
 # Marvell BSD License Option
@@ -41,6 +43,8 @@
 [Sources.common]
   Pp2Dxe.c
   Mvpp2Lib.c
+  Pp2DxeHii.vfr
+  Pp2DxeHii.uni
 
 [Packages]
   EmbeddedPkg/EmbeddedPkg.dec
@@ -58,8 +62,10 @@
   DebugLib
   UefiLib
   NetLib
+  HiiLib
   UefiDriverEntryPoint
   UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
   MemoryAllocationLib
   CacheMaintenanceLib
 
@@ -71,6 +77,9 @@
   gMarvellMdioProtocolGuid
   gMarvellPhyProtocolGuid
 
+[Guids]
+  gPp2FormSetGuid
+
 [Pcd]
   gMarvellTokenSpaceGuid.PcdBoardId
   gMarvellTokenSpaceGuid.PcdPp2GopIndexes
@@ -80,6 +89,7 @@
   gMarvellTokenSpaceGuid.PcdPp2PhyIndexes
   gMarvellTokenSpaceGuid.PcdPp2Port2Controller
   gMarvellTokenSpaceGuid.PcdPp2PortIds
+  gMarvellTokenSpaceGuid.PcdPp2MACBaseAddress
 
 [Depex]
   TRUE

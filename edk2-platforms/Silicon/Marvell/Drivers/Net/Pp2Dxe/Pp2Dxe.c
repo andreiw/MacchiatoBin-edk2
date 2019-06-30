@@ -1,4 +1,5 @@
 /********************************************************************************
+Copyright (c) 2019, Andrei Warkentin <andrey.warkentin@gmail.com>
 Copyright (C) 2016 Marvell International Ltd.
 
 Marvell BSD License Option
@@ -46,13 +47,44 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <Library/NetLib.h>
 #include <Library/PcdLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/UefiLib.h>
+#include <Library/HiiLib.h>
+
+#include <Guid/Pp2FormSet.h>
 
 #include "Mvpp2LibHw.h"
 #include "Mvpp2Lib.h"
 #include "Pp2Dxe.h"
 
 #define ReturnUnlock(tpl, status) do { gBS->RestoreTPL (tpl); return (status); } while(0)
+
+typedef struct {
+  VENDOR_DEVICE_PATH VendorDevicePath;
+  EFI_DEVICE_PATH_PROTOCOL End;
+} HII_VENDOR_DEVICE_PATH;
+
+STATIC HII_VENDOR_DEVICE_PATH mVendorDevicePath = {
+  {
+    {
+      HARDWARE_DEVICE_PATH,
+      HW_VENDOR_DP,
+      {
+        (UINT8) (sizeof (VENDOR_DEVICE_PATH)),
+        (UINT8) ((sizeof (VENDOR_DEVICE_PATH)) >> 8)
+      }
+    },
+    PP2_FORMSET_GUID
+  },
+  {
+    END_DEVICE_PATH_TYPE,
+    END_ENTIRE_DEVICE_PATH_SUBTYPE,
+    {
+      (UINT8) (END_DEVICE_PATH_LENGTH),
+      (UINT8) ((END_DEVICE_PATH_LENGTH) >> 8)
+    }
+  }
+};
 
 STATIC PP2_DEVICE_PATH Pp2DevicePathTemplate = {
   {
@@ -1095,6 +1127,8 @@ Pp2DxeSnpInstall (
   EFI_STATUS Status;
   PP2_DEVICE_PATH *Pp2DevicePath;
   EFI_SIMPLE_NETWORK_MODE *SnpMode;
+  UINT64 MACBaseAddress;
+  UINT64 MACBaseAddressValidated;
 
   Pp2DevicePath = AllocateCopyPool (sizeof (PP2_DEVICE_PATH), &Pp2DevicePathTemplate);
   if (Pp2DevicePath == NULL) {
@@ -1111,7 +1145,30 @@ Pp2DxeSnpInstall (
   CopyMem (SnpMode, &Pp2SnpModeTemplate, sizeof (EFI_SIMPLE_NETWORK_MODE));
 
   /* Handle device path of the controller */
-  Pp2DevicePath->Pp2Mac.MacAddress.Addr[3] += PcdGet8 (PcdBoardId);
+  MACBaseAddress = PcdGet64(PcdPp2MACBaseAddress);
+  if (MACBaseAddress == 0) {
+    Pp2DevicePath->Pp2Mac.MacAddress.Addr[3] += PcdGet8 (PcdBoardId);
+  } else {
+    UINT8 *V = (VOID *) &MACBaseAddressValidated;
+    /*
+     * Because HII form lets you enter anything, clean the value;
+     */
+    MACBaseAddressValidated = MACBaseAddress;
+    V[0] &= 0xFE; /* Unicast */
+    V[0] |= 0x2;  /* Locally administered */
+    V[7] = 0;
+    V[8] = 0;
+    if (MACBaseAddressValidated != MACBaseAddress) {
+      PcdSet64 (PcdPp2MACBaseAddress, MACBaseAddressValidated);
+    }
+    /*
+     * Just in case someone defines a BE EFI definition... this
+     * CopyMem will work correctly only on LE.
+     */
+    CopyMem (Pp2DevicePath->Pp2Mac.MacAddress.Addr,
+	     (VOID *) &MACBaseAddressValidated,
+	     sizeof(Pp2DevicePath->Pp2Mac.MacAddress.Addr));
+  }
   Pp2DevicePath->Pp2Mac.MacAddress.Addr[5] += Pp2Context->Instance;
   Pp2Context->Signature = PP2DXE_SIGNATURE;
   Pp2Context->DevicePath = Pp2DevicePath;
@@ -1335,6 +1392,43 @@ Pp2DxeInitialiseController (
   return EFI_SUCCESS;
 }
 
+STATIC EFI_STATUS
+InstallHiiPages (
+  VOID
+  )
+{
+  EFI_STATUS     Status;
+  EFI_HII_HANDLE HiiHandle;
+  EFI_HANDLE     DriverHandle;
+
+  extern UINT8 Pp2DxeStrings[];
+  extern UINT8 Pp2DxeHiiBin[];
+
+  DriverHandle = NULL;
+  Status = gBS->InstallMultipleProtocolInterfaces (&DriverHandle,
+                  &gEfiDevicePathProtocolGuid,
+                  &mVendorDevicePath,
+                  NULL);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  HiiHandle = HiiAddPackages (&gPp2FormSetGuid,
+                              DriverHandle,
+                              Pp2DxeStrings,
+                              Pp2DxeHiiBin,
+                              NULL);
+
+  if (HiiHandle == NULL) {
+    gBS->UninstallMultipleProtocolInterfaces (DriverHandle,
+                  &gEfiDevicePathProtocolGuid,
+                  &mVendorDevicePath,
+                  NULL);
+    return EFI_OUT_OF_RESOURCES;
+  }
+  return EFI_SUCCESS;
+}
+
 EFI_STATUS
 EFIAPI
 Pp2DxeInitialise (
@@ -1346,7 +1440,18 @@ Pp2DxeInitialise (
   MV_BOARD_PP2_DESC *Pp2BoardDesc;
   MVPP2_SHARED *Mvpp2Shared;
   EFI_STATUS Status;
+  UINTN Size;
+  UINT64 Var64;
   UINT8 Index;
+
+  Status = gRT->GetVariable(L"MACBaseAddress", &gPp2FormSetGuid,
+			    NULL, &Size, &Var64);
+  if (EFI_ERROR (Status)) {
+    /*
+     * Save the default value in NVRAM (usually 0).
+     */
+    PcdSet64 (PcdPp2MACBaseAddress, PcdGet64 (PcdPp2MACBaseAddress));
+  }
 
   /* Obtain table with enabled Pp2 devices */
   Status = gBS->LocateProtocol (&gMarvellBoardDescProtocolGuid,
@@ -1383,6 +1488,12 @@ Pp2DxeInitialise (
       DEBUG ((DEBUG_ERROR, "Pp2Dxe #%d: Controller initialisation fail\n", Index));
       return Status;
     }
+  }
+
+  Status = InstallHiiPages();
+  if (Status != EFI_SUCCESS) {
+    DEBUG((EFI_D_ERROR, "Couldn't install Pp2 configuration pages: %r\n",
+           Status));
   }
 
   return EFI_SUCCESS;

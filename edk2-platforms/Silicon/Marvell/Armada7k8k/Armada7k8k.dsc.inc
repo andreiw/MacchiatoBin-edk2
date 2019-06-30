@@ -1,6 +1,7 @@
 #
 #Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 #Copyright (C) 2016 Marvell International Ltd.
+#Copyright (C) 2019 Andrei Warkentin <andrey.warkentin@gmail.com>
 #
 #Marvell BSD License Option
 #
@@ -436,6 +437,9 @@
   gEfiSignedCapsulePkgTokenSpaceGuid.PcdEdkiiSystemFirmwareFileGuid|{0x02, 0x0e, 0x89, 0xb3, 0x6b, 0xc4, 0x70, 0x49, 0x95, 0x36, 0x57, 0x78, 0x7a, 0x9e, 0x06, 0xc7}
   gEfiMdeModulePkgTokenSpaceGuid.PcdSystemFmpCapsuleImageTypeIdGuid|{0x75, 0xc4, 0x7f, 0x75, 0x22, 0x6b, 0x82, 0x44, 0x86, 0x8e, 0xde, 0xd2, 0x86, 0xf3, 0x09, 0x40}
 !endif
+
+[PcdsDynamicHii.common.DEFAULT]
+  gMarvellTokenSpaceGuid.PcdPp2MACBaseAddress|L"MACBaseAddress"|gPp2FormSetGuid|0x0|0x0
 
 ################################################################################
 #

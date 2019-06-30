@@ -1,0 +1,49 @@
+/** @file
+*
+*  Copyright (c) 2019, Andrei Warkentin <andrey.warkentin@gmail.com>
+*
+*  This program and the accompanying materials
+*  are licensed and made available under the terms and conditions of the BSD License
+*  which accompanies this distribution.  The full text of the license may be found at
+*  http://opensource.org/licenses/bsd-license.php
+*
+*  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+*
+**/
+
+#include <Guid/HiiPlatformSetupFormset.h>
+#include <Uefi/UefiMultiPhase.h>
+#include <Guid/Pp2FormSet.h>
+
+typedef struct {
+  UINT64 Base;
+} PP2_MAC_BASE_VARSTORE_DATA;
+
+formset
+  guid      = PP2_FORMSET_GUID,
+  title     = STRING_TOKEN(STR_FORM_SET_TITLE),
+  help      = STRING_TOKEN(STR_FORM_SET_TITLE_HELP),
+  classguid = EFI_HII_PLATFORM_SETUP_FORMSET_GUID,
+
+  efivarstore PP2_MAC_BASE_VARSTORE_DATA,
+    attribute = EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE,  // EFI variable attributes
+    name  = MACBaseAddress,
+    guid  = PP2_FORMSET_GUID;
+
+  form formid = 0x1000,
+    title  = STRING_TOKEN(STR_MAIN_FORM_TITLE);
+
+    numeric varid = MACBaseAddress.Base,
+        prompt      = STRING_TOKEN(STR_MAC_BASE_PROMPT),
+        help        = STRING_TOKEN(STR_MAC_BASE_HELP),
+        flags       = DISPLAY_UINT_HEX | NUMERIC_SIZE_8 | INTERACTIVE | RESET_REQUIRED,
+	minimum	    = 0,
+	maximum     = 0xffffffffffff,
+    endnumeric;
+
+    subtitle text = STRING_TOKEN(STR_NULL_STRING);
+
+  endform;
+
+endformset;
