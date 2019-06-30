@@ -168,6 +168,11 @@
   gMarvellTokenSpaceGuid.PcdXenon8BitBusEnable|{ 0x1, 0x0 }
   gMarvellTokenSpaceGuid.PcdXenonSlowModeEnable|{ 0x1, 0x0 }
 
+[LibraryClasses.common]
+  UefiUsbLib|MdePkg/Library/UefiUsbLib/UefiUsbLib.inf
+
 [Components.AARCH64]
   Silicon/Marvell/Armada7k8k/AcpiTables/Armada80x0McBin/AcpiTables.inf
+  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+  MdeModulePkg/Bus/Usb/UsbMouseDxe/UsbMouseDxe.inf
   OptionRomPkg/AMDGop/AMDGop.inf
