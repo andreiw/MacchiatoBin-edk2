@@ -736,11 +736,11 @@ Armada8040McBinSmbiosFixup (
    )
 {
   // TYPE1
-  mArmadaDefaultType1Strings[1] = "Armada 8040 MacchiatoBin\0";
+  mArmadaDefaultType1Strings[1] = "Armada 8040 MacchiatoBin (AndreiW FW)\0";
   mArmadaDefaultType1Strings[2] = "Rev 1.2\0";
 
   // TYPE2
-  mArmadaDefaultType2Strings[1] = "Armada 8040 MacchiatoBin\0";
+  mArmadaDefaultType2Strings[1] = "Armada 8040 MacchiatoBin (AndreiW FW)\0";
   mArmadaDefaultType2Strings[2] = "Rev 1.2\0";
 
   // TYPE3
