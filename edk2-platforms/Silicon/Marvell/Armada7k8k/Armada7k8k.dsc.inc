@@ -32,6 +32,14 @@
 #(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 #SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+
+!ifndef BUILD_DATE
+DEFINE BUILD_DATE = latest
+!endif
+!ifndef BUILD_COMMIT
+DEFINE BUILD_COMMIT = current
+!endif
+
 [LibraryClasses.common]
   ArmadaIcuLib|Silicon/Marvell/Library/IcuLib/IcuLib.inf
   ArmadaSoCDescLib|Silicon/Marvell/Armada7k8k/Library/Armada7k8kSoCDescLib/Armada7k8kSoCDescLib.inf
@@ -273,7 +281,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase64|0xF93D0000
 
 [PcdsFixedAtBuild.common]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"MARVELL UEFI 18.12.AndreiW.0"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"https://github.com/andreiw/MacchiatoBin-edk2"
   gArmPlatformTokenSpaceGuid.PcdCoreCount|4
 
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength|1000000
@@ -660,6 +668,9 @@
 
 [BuildOptions.common.EDKII.DXE_RUNTIME_DRIVER]
   GCC:*_*_*_DLINK_FLAGS = -z common-page-size=0x10000
+
+[BuildOptions]
+  GCC:*_*_*_CC_FLAGS = -DBUILD_DATE=$(BUILD_DATE) -DBUILD_COMMIT=$(BUILD_COMMIT)
 
 ################################################################################
 #

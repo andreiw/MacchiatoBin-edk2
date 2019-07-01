@@ -37,9 +37,12 @@ fi
 pushd uefi-marvell
 export WORKSPACE=${PWD}
 export PACKAGES_PATH=${PWD}:${PWD}/edk2-platforms
+BUILD_COMMIT=`git rev-parse --short HEAD`
+BUILD_DATE=`date +%m/%d/%Y`
+COMMON_OPTS="-DBUILD_DATE=$BUILD_DATE -DBUILD_COMMIT=$BUILD_COMMIT -D MVEBU_PCIE_ECAM_WA -D INCLUDE_TFTP_COMMAND"
 make -C BaseTools
 source edksetup.sh
-build -a AARCH64 -t GCC5 -b ${TYPE} -D MVEBU_PCIE_ECAM_WA -D INCLUDE_TFTP_COMMAND -p Platform/SolidRun/Armada80x0McBin/Armada80x0McBin.dsc
+build -a AARCH64 -t GCC5 -b ${TYPE} -p Platform/SolidRun/Armada80x0McBin/Armada80x0McBin.dsc ${COMMON_OPTS}
 export BL33=${BASEDIR}/uefi-marvell/Build/Armada80x0McBin-AARCH64/${TYPE}_GCC5/FV/ARMADA_EFI.fd
 popd
 

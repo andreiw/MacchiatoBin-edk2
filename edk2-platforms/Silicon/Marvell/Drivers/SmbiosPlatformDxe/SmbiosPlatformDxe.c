@@ -3,6 +3,7 @@
 
   Copyright (c) 2015, ARM Limited. All rights reserved.
   Copyright (c) 2017, Marvell International Ltd. and its affiliates
+  Copyright (c) 2019, Andrei Warkentin <andrey.warkentin@gmail.com>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -30,6 +31,9 @@
 
 #include <IndustryStandard/SmBios.h>
 #include <PiDxe.h>
+
+#define _S(x) #x
+#define S(x) _S(x)
 
 //
 // SMBIOS tables often reference each other using
@@ -87,9 +91,9 @@ STATIC SMBIOS_TABLE_TYPE0 mArmadaDefaultType0 = {
 };
 
 STATIC CHAR8 CONST *mArmadaDefaultType0Strings[] = {
-  "EFI Development Kit II / Marvell\0", /* Vendor */
-  "EDK II\0",                           /* BiosVersion */
-  __DATE__"\0",                         /* BiosReleaseDate */
+  "https://github.com/andreiw/MacchiatoBin-edk2\0",                    // Vendor
+  "Armada 70x0/80x0 UEFI (" S(BUILD_COMMIT)" on " S(BUILD_DATE) ")\0", // Version
+  S(BUILD_DATE)"\0",                                                   // ReleaseDate
   NULL
 };
 
@@ -736,11 +740,11 @@ Armada8040McBinSmbiosFixup (
    )
 {
   // TYPE1
-  mArmadaDefaultType1Strings[1] = "Armada 8040 MacchiatoBin (AndreiW FW)\0";
+  mArmadaDefaultType1Strings[1] = "Armada 8040 MacchiatoBin\0";
   mArmadaDefaultType1Strings[2] = "Rev 1.2\0";
 
   // TYPE2
-  mArmadaDefaultType2Strings[1] = "Armada 8040 MacchiatoBin (AndreiW FW)\0";
+  mArmadaDefaultType2Strings[1] = "Armada 8040 MacchiatoBin\0";
   mArmadaDefaultType2Strings[2] = "Rev 1.2\0";
 
   // TYPE3
