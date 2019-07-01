@@ -56,6 +56,9 @@
 # Pcd Section - list of all EDK II PCD Entries defined by this Platform
 #
 ################################################################################
+[PcdsFeatureFlag.common]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdInstallAcpiSdtProtocol|TRUE
+
 [PcdsFixedAtBuild.common]
   #BoardId: Armada-8040-MacchiatoBin
   gMarvellTokenSpaceGuid.PcdBoardId|0x1

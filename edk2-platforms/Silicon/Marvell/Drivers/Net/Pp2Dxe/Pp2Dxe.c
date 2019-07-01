@@ -50,8 +50,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/UefiLib.h>
 #include <Library/HiiLib.h>
+#include <Library/MvBoardDescLib.h>
 
 #include <Guid/Pp2FormSet.h>
+
+#include <IndustryStandard/Acpi.h>
+#include <IndustryStandard/AcpiAml.h>
+#include <Protocol/AcpiTable.h>
+#include <Protocol/AcpiSystemDescriptionTable.h>
 
 #include "Mvpp2LibHw.h"
 #include "Mvpp2Lib.h"
@@ -63,6 +69,8 @@ typedef struct {
   VENDOR_DEVICE_PATH VendorDevicePath;
   EFI_DEVICE_PATH_PROTOCOL End;
 } HII_VENDOR_DEVICE_PATH;
+
+STATIC EFI_EVENT mReadyToBootEvent;
 
 STATIC HII_VENDOR_DEVICE_PATH mVendorDevicePath = {
   {
@@ -1429,6 +1437,298 @@ InstallHiiPages (
   return EFI_SUCCESS;
 }
 
+STATIC EFI_ACPI_HANDLE
+GetHandleChild(
+ IN EFI_ACPI_SDT_PROTOCOL *Sdt,
+ IN EFI_ACPI_HANDLE Handle,
+ IN UINTN Index)
+{
+  EFI_ACPI_HANDLE N = NULL;
+  while (Index--) {
+    if (Sdt->GetChild(Handle, &N) != EFI_SUCCESS) {
+      return NULL;
+    }
+  }
+
+  return N;
+}
+
+#define GET_HANDLE_OP_INVALID ((UINTN) -1)
+
+
+STATIC UINTN
+GetHandleOpType(
+		IN EFI_ACPI_SDT_PROTOCOL *Sdt,
+		IN EFI_ACPI_HANDLE Handle
+)
+{
+  UINT8 *Data;
+  UINTN DataSize;
+  EFI_STATUS          Status;
+  EFI_ACPI_DATA_TYPE  DataType;
+
+  Status = Sdt->GetOption(Handle, 0, &DataType, (CONST VOID **)&Data,
+			  &DataSize);
+  if (Status != EFI_SUCCESS) {
+    return GET_HANDLE_OP_INVALID;
+  }
+
+  ASSERT (DataType == EFI_ACPI_DATA_TYPE_OPCODE);
+  ASSERT (DataSize == 1);
+  return Data[0];
+}
+
+
+STATIC EFI_STATUS
+GetHandleUINT8(
+	       IN EFI_ACPI_SDT_PROTOCOL *Sdt,
+	       IN EFI_ACPI_HANDLE Handle,
+	       IN UINT8 *Val
+	       )
+{
+  UINT8 *Data;
+  UINTN DataSize;
+  EFI_STATUS          Status;
+  EFI_ACPI_DATA_TYPE  DataType;
+
+  Status = Sdt->GetOption(Handle, 1, &DataType, (CONST VOID **)&Data,
+			  &DataSize);
+  if (Status != EFI_SUCCESS) {
+
+    return EFI_NOT_FOUND;
+  }
+
+  if (DataType != EFI_ACPI_DATA_TYPE_UINT ||
+      DataSize != 1) {
+    return EFI_UNSUPPORTED;
+  }
+
+  *Val = Data[0];
+  return EFI_SUCCESS;
+}
+
+
+STATIC CHAR8 *
+GetHandleString(
+	       IN EFI_ACPI_SDT_PROTOCOL *Sdt,
+	       IN EFI_ACPI_HANDLE Handle
+	       )
+{
+  UINT8 *Data;
+  UINTN DataSize;
+  EFI_STATUS          Status;
+  EFI_ACPI_DATA_TYPE  DataType;
+
+  Status = Sdt->GetOption(Handle, 1, &DataType, (CONST VOID **)&Data,
+			  &DataSize);
+  if (Status != EFI_SUCCESS) {
+    return NULL;
+  }
+
+  if (DataType != EFI_ACPI_DATA_TYPE_STRING) {
+    return NULL;
+  }
+
+  return (VOID *) Data;
+}
+
+
+STATIC EFI_STATUS
+SetHandleUINT8(
+	       IN EFI_ACPI_SDT_PROTOCOL *Sdt,
+	       IN EFI_ACPI_HANDLE Handle,
+	       IN UINT8 Val
+	       )
+{
+  return  Sdt->SetOption(Handle, 1, (VOID *) &Val, sizeof(UINT8));
+}
+
+
+VOID ReplaceDSDPackageMAC(
+  IN EFI_ACPI_SDT_PROTOCOL *Sdt,
+  IN EFI_ACPI_HANDLE       ChildHandle,
+  IN UINT8                 *MACBuffer
+  )
+{
+  UINTN Index;
+  EFI_ACPI_HANDLE Handle;
+  EFI_ACPI_HANDLE StrHandle;
+  EFI_STATUS Status;
+
+  Handle = GetHandleChild(Sdt, ChildHandle, 2);
+  if (Handle == NULL || GetHandleOpType(Sdt, Handle) != AML_PACKAGE_OP)  {
+    DEBUG((EFI_D_ERROR, "No L2 Package?\n"));
+    return;
+  }
+
+  /*
+   * mac-address must be the first entry.
+   */
+  Handle = GetHandleChild(Sdt, Handle, 1);
+  if (Handle == NULL || GetHandleOpType(Sdt, Handle) != AML_PACKAGE_OP)  {
+    DEBUG((EFI_D_ERROR, "No L3 Package?\n"));
+    return;
+  }
+
+  /*
+   * Validate Handle is a mac-address and not something else.
+   */
+  StrHandle = GetHandleChild(Sdt, Handle, 1);
+  if (StrHandle == NULL ||
+      GetHandleOpType(Sdt, StrHandle) != AML_STRING_PREFIX ||
+      AsciiStrCmp(GetHandleString(Sdt, StrHandle), "mac-address") != 0) {
+    DEBUG((EFI_D_ERROR, "No mac-address property?\n"));
+    return;
+  }
+
+  Handle = GetHandleChild(Sdt, Handle, 2);
+  if (Handle == NULL || GetHandleOpType(Sdt, Handle) != AML_PACKAGE_OP)  {
+    DEBUG((EFI_D_ERROR, "No L4 Package?\n"));
+    return;
+  }
+
+  for (Index = 1; Index <= 6; Index++) {
+    UINT8 Val;
+    UINT8 ValOld;
+    EFI_ACPI_HANDLE EleHandle = GetHandleChild(Sdt, Handle, Index);
+    if (EleHandle == NULL) {
+      DEBUG((EFI_D_ERROR, "No %u (-st/-th) element?\n", Index));
+      return;
+    }
+
+    Status = GetHandleUINT8(Sdt, EleHandle, &ValOld);
+    if (Status != EFI_SUCCESS) {
+      DEBUG((EFI_D_ERROR, "Wrong type for %u (-st/-th) element?\n", Index));
+    }
+
+    Status = SetHandleUINT8(Sdt, EleHandle, MACBuffer[Index - 1]);
+    if (Status != EFI_SUCCESS) {
+      DEBUG((EFI_D_ERROR, "Couldn't set %u (-st/-th) element to new MAC address\n",
+	     Index));
+      return;
+    }
+
+    Status = GetHandleUINT8(Sdt, EleHandle, &Val);
+    ASSERT (Status == EFI_SUCCESS);
+    DEBUG((EFI_D_ERROR, "MAC[%u] 0x%x -> 0x%x\n", Index, ValOld, Val));
+  }
+}
+
+
+STATIC VOID
+UpdateNetDeviceDSD(
+ IN EFI_ACPI_SDT_PROTOCOL *Sdt,
+ IN EFI_ACPI_HANDLE DSDHandle,
+ IN UINT64 MACBaseAddress,
+ IN UINTN Instance)
+{
+  EFI_STATUS Status;
+  UINT8 *Data;
+  UINTN DataSize;
+  EFI_ACPI_DATA_TYPE DataType;
+  EFI_ACPI_HANDLE PkgHandle;
+  BOOLEAN Found;
+  UINT64 MAC = MACBaseAddress;
+
+  ((UINT8 *) &MAC)[5] += Instance;
+
+  Status = Sdt->GetOption (DSDHandle, 0, &DataType, (CONST VOID **)&Data, &DataSize);
+  ASSERT_EFI_ERROR (Status);
+  ASSERT (DataType == EFI_ACPI_DATA_TYPE_OPCODE);
+  ASSERT (*Data == AML_NAME_OP);
+
+  Status = Sdt->GetOption (DSDHandle, 2, &DataType, (CONST VOID **)&Data, &DataSize);
+  ASSERT_EFI_ERROR (Status);
+  ASSERT (DataType == EFI_ACPI_DATA_TYPE_CHILD);
+
+  Sdt->Open((VOID *) Data, &PkgHandle);
+  Status = Sdt->GetOption(PkgHandle, 0, &DataType, (CONST VOID **)&Data, &DataSize);
+
+  ASSERT (DataSize == 1);
+  ASSERT (Data[0] == AML_PACKAGE_OP);
+
+  Found = FALSE;
+  DEBUG((EFI_D_INFO, "Setting MAC to 0x%lx\n", MAC));
+  ReplaceDSDPackageMAC(Sdt, PkgHandle, (VOID *) &MAC);
+
+  Sdt->Close(PkgHandle);
+}
+
+
+STATIC
+VOID
+OnReadyToBoot (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  EFI_ACPI_SDT_PROTOCOL           *Sdt;
+  EFI_STATUS                      Status;
+  UINTN                           TableIndex;
+  EFI_ACPI_SDT_HEADER             *TableHeader;
+  EFI_ACPI_TABLE_VERSION          TableVersion;
+  UINTN                           TableKey;
+  UINT64                          MACBaseAddress;
+
+  MACBaseAddress = PcdGet64(PcdPp2MACBaseAddress);
+  DEBUG((EFI_D_ERROR, "MACBaseAddress 0x%lx\n", MACBaseAddress));
+  Status = gBS->LocateProtocol (&gEfiAcpiSdtProtocolGuid, NULL, (VOID **)&Sdt);
+  if (EFI_ERROR (Status)) {
+    DEBUG((EFI_D_ERROR, "No ACPI SDT protocol to update the MAC addresses!\n"));
+    return;
+  }
+
+  TableIndex  = 0;
+  TableKey    = 0;
+  TableHeader = NULL;
+
+  do {
+    EFI_ACPI_HANDLE TableHandle;
+    EFI_ACPI_HANDLE DSDHandle;
+
+    Status = Sdt->GetAcpiTable (TableIndex++, &TableHeader, &TableVersion,
+                    &TableKey);
+    if (EFI_ERROR (Status)) {
+      break;
+    }
+
+    if (TableHeader->Signature != EFI_ACPI_6_2_DIFFERENTIATED_SYSTEM_DESCRIPTION_TABLE_SIGNATURE) {
+      continue;
+    }
+
+    Status =  Sdt->OpenSdt(TableKey, &TableHandle);
+    if (EFI_ERROR (Status)) {
+      break;
+    }
+
+    if (PcdGet8 (PcdBoardId) == MVBOARD_ID_ARMADA8040_MCBIN) {
+      /*
+       * There's probably a better way to do this without hardcoding,
+       * the order - but this will do for now.
+       */
+      if (!EFI_ERROR (Sdt->FindPath(TableHandle, "\\_SB.PP20.ETH0._DSD",
+				    &DSDHandle))) {
+	UpdateNetDeviceDSD(Sdt, DSDHandle, MACBaseAddress, 0);
+      }
+
+      if (!EFI_ERROR (Sdt->FindPath(TableHandle, "\\_SB.PP21.ETH0._DSD",
+				    &DSDHandle))) {
+	UpdateNetDeviceDSD(Sdt, DSDHandle, MACBaseAddress, 1);
+      }
+
+      if (!EFI_ERROR (Sdt->FindPath(TableHandle, "\\_SB.PP21.ETH1._DSD",
+				    &DSDHandle))) {
+	UpdateNetDeviceDSD(Sdt, DSDHandle, MACBaseAddress, 2);
+      }
+    }
+
+    Sdt->Close(TableHandle);
+    DEBUG((EFI_D_INFO, "Updated the ACPI table with MAC addresses!"));
+    break;
+  } while (TRUE);
+}
+
+
 EFI_STATUS
 EFIAPI
 Pp2DxeInitialise (
@@ -1493,6 +1793,15 @@ Pp2DxeInitialise (
   Status = InstallHiiPages();
   if (Status != EFI_SUCCESS) {
     DEBUG((EFI_D_ERROR, "Couldn't install Pp2 configuration pages: %r\n",
+           Status));
+  }
+
+  Status = gBS->CreateEventEx (EVT_NOTIFY_SIGNAL, TPL_CALLBACK,
+			       OnReadyToBoot, NULL, &gEfiEventReadyToBootGuid,
+			       &mReadyToBootEvent);
+  Status = InstallHiiPages();
+  if (Status != EFI_SUCCESS) {
+    DEBUG((EFI_D_ERROR, "Couldn't install Pp2 ACPI patcher: %r\n",
            Status));
   }
 

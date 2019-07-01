@@ -76,9 +76,12 @@
   gMarvellBoardDescProtocolGuid
   gMarvellMdioProtocolGuid
   gMarvellPhyProtocolGuid
+  gEfiAcpiTableProtocolGuid
+  gEfiAcpiSdtProtocolGuid
 
 [Guids]
   gPp2FormSetGuid
+  gEfiEventReadyToBootGuid
 
 [Pcd]
   gMarvellTokenSpaceGuid.PcdBoardId

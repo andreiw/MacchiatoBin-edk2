@@ -217,6 +217,11 @@ DefinitionBlock ("DSDT.aml", "DSDT", 2, "MVEBU ", "ARMADA8K", 3)
               Name (_DSD, Package () {
                   ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"),
                   Package () {
+		    /*
+		     * To ensure this can get patched, the values in the package *must* not be
+		     * 0x00 or 0x01, as those can get emitted as ZeroOp and OneOp.
+		     */
+		    Package () { "mac-address", Package () {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF}},
                     Package () { "port-id", 0 },
                     Package () { "gop-port-id", 0 },
                     Package () { "phy-mode", "10gbase-kr"},
@@ -254,7 +259,12 @@ DefinitionBlock ("DSDT.aml", "DSDT", 2, "MVEBU ", "ARMADA8K", 3)
               Name (_DSD, Package () {
                   ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"),
                   Package () {
-                    Package () { "port-id", 0 },
+		    /*
+		     * To ensure this can get patched, the values in the package *must* not be
+		     * 0x00 or 0x01, as those can get emitted as ZeroOp and OneOp.
+		     */
+		    Package () { "mac-address", Package () {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF}},
+		    Package () { "port-id", 0 },
                     Package () { "gop-port-id", 0 },
                     Package () { "phy-mode", "10gbase-kr"},
                   }
@@ -273,6 +283,11 @@ DefinitionBlock ("DSDT.aml", "DSDT", 2, "MVEBU ", "ARMADA8K", 3)
               Name (_DSD, Package () {
                   ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"),
                   Package () {
+		    /*
+		     * To ensure this can get patched, the values in the package *must* not be
+		     * 0x00 or 0x01, as those can get emitted as ZeroOp and OneOp.
+		     */
+		    Package () { "mac-address", Package () {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF}},
                     Package () { "port-id", 1 },
                     Package () { "gop-port-id", 2 },
                     Package () { "phy-mode", "sgmii"},
