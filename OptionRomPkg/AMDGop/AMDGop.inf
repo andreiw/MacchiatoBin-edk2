@@ -6,4 +6,4 @@
   VERSION_STRING                 = 1.0
 
 [Binaries.AArch64]
-  PE32|AArch64/ARM64Gop_1_66.efi|*
+  PE32|AArch64/Arm64Gop_1_68.efi|*
