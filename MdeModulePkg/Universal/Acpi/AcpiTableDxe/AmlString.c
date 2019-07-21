@@ -463,19 +463,19 @@ AmlPrintNameSeg (
   IN UINT8              *Buffer
   )
 {
-  DEBUG ((EFI_D_ERROR, "%c", Buffer[0]));
+  DEBUG ((EFI_D_VERBOSE, "%c", Buffer[0]));
   if ((Buffer[1] == '_') && (Buffer[2] == '_') && (Buffer[3] == '_')) {
     return ;
   }
-  DEBUG ((EFI_D_ERROR, "%c", Buffer[1]));
+  DEBUG ((EFI_D_VERBOSE, "%c", Buffer[1]));
   if ((Buffer[2] == '_') && (Buffer[3] == '_')) {
     return ;
   }
-  DEBUG ((EFI_D_ERROR, "%c", Buffer[2]));
+  DEBUG ((EFI_D_VERBOSE, "%c", Buffer[2]));
   if (Buffer[3] == '_') {
     return ;
   }
-  DEBUG ((EFI_D_ERROR, "%c", Buffer[3]));
+  DEBUG ((EFI_D_VERBOSE, "%c", Buffer[3]));
   return ;
 }
 
@@ -497,14 +497,14 @@ AmlPrintNameString (
     // RootChar
     //
     Buffer ++;
-    DEBUG ((EFI_D_ERROR, "\\"));
+    DEBUG ((EFI_D_VERBOSE, "\\"));
   } else if (*Buffer == AML_PARENT_PREFIX_CHAR) {
     //
     // ParentPrefixChar
     //
     do {
       Buffer ++;
-      DEBUG ((EFI_D_ERROR, "^"));
+      DEBUG ((EFI_D_VERBOSE, "^"));
     } while (*Buffer == AML_PARENT_PREFIX_CHAR);
   }
 
@@ -536,7 +536,7 @@ AmlPrintNameString (
   AmlPrintNameSeg (Buffer);
   Buffer += AML_NAME_SEG_SIZE;
   for (Index = 0; Index < SegCount - 1; Index++) {
-    DEBUG ((EFI_D_ERROR, "."));
+    DEBUG ((EFI_D_VERBOSE, "."));
     AmlPrintNameSeg (Buffer);
     Buffer += AML_NAME_SEG_SIZE;
   }

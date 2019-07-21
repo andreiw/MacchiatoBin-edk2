@@ -1016,9 +1016,9 @@ FindPath (
   }
 
   DEBUG_CODE_BEGIN ();
-  DEBUG ((EFI_D_ERROR, "AcpiSdt: FindPath - "));
+  DEBUG ((EFI_D_VERBOSE, "AcpiSdt: FindPath - "));
   AmlPrintNameString (AmlPath);
-  DEBUG ((EFI_D_ERROR, "\n"));
+  DEBUG ((EFI_D_VERBOSE, "\n"));
   DEBUG_CODE_END ();
 
   if (AmlHandle->Signature == EFI_AML_ROOT_HANDLE_SIGNATURE) {

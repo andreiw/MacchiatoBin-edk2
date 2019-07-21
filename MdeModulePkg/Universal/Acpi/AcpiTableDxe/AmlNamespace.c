@@ -482,14 +482,14 @@ AmlDumpNodeInfo (
   CurrentLink = AmlParentNodeList->Children.ForwardLink;
 
   if (Level == 0) {
-    DEBUG ((EFI_D_ERROR, "\\"));
+    DEBUG ((EFI_D_VERBOSE, "\\"));
   } else {
     for (Index = 0; Index < Level; Index++) {
-      DEBUG ((EFI_D_ERROR, "    "));
+      DEBUG ((EFI_D_VERBOSE, "    "));
     }
     AmlPrintNameSeg (AmlParentNodeList->Name);
   }
-  DEBUG ((EFI_D_ERROR, "\n"));
+  DEBUG ((EFI_D_VERBOSE, "\n"));
 
   while (CurrentLink != &AmlParentNodeList->Children) {
     CurrentAmlNodeList = EFI_AML_NODE_LIST_FROM_LINK (CurrentLink);
@@ -549,7 +549,7 @@ AmlFindPath (
   }
 
   DEBUG_CODE_BEGIN ();
-  DEBUG ((EFI_D_ERROR, "AcpiSdt: NameSpace:\n"));
+  DEBUG ((EFI_D_VERBOSE, "AcpiSdt: NameSpace:\n"));
   AmlDumpNodeInfo (AmlRootNodeList, 0);
   DEBUG_CODE_END ();
 
@@ -585,9 +585,9 @@ AmlFindPath (
   //
   if (CurrentAmlNodeList != NULL) {
     DEBUG_CODE_BEGIN ();
-    DEBUG ((EFI_D_ERROR, "AcpiSdt: Search from: \\"));
+    DEBUG ((EFI_D_VERBOSE, "AcpiSdt: Search from: \\"));
     AmlPrintNameSeg (CurrentAmlNodeList->Name);
-    DEBUG ((EFI_D_ERROR, "\n"));
+    DEBUG ((EFI_D_VERBOSE, "\n"));
     DEBUG_CODE_END ();
     AmlNodeList = AmlFindNodeInTheTree (
                     AmlPath,
