@@ -1126,6 +1126,29 @@ drop:
   ReturnUnlock(SavedTpl, Status);
 }
 
+STATIC VOID
+SetBaseMAC (
+  IN  UINT64 Base
+  )
+{
+  /*
+   * Convert the value back into its edit-able representation.
+   */
+  PcdSet64 (PcdPp2MACBaseAddress, SwapBytes64(Base << 16));
+}
+
+STATIC UINT64
+GetBaseMAC (VOID)
+{
+  /*
+   * The base MAC address is entered as you would expect a MAC address, i.e.
+   * a big-endian value. Thus we need to swap it, but then the MAC
+   * value is only 48-bits - not 64 - so we have to clean out the moved
+   * padding.
+   */
+  return SwapBytes64(PcdGet64(PcdPp2MACBaseAddress)) >> 16;
+}
+
 EFI_STATUS
 Pp2DxeSnpInstall (
   IN PP2DXE_CONTEXT *Pp2Context
@@ -1152,8 +1175,10 @@ Pp2DxeSnpInstall (
   CopyMem (&Pp2Context->Snp, &Pp2SnpTemplate, sizeof (EFI_SIMPLE_NETWORK_PROTOCOL));
   CopyMem (SnpMode, &Pp2SnpModeTemplate, sizeof (EFI_SIMPLE_NETWORK_MODE));
 
-  /* Handle device path of the controller */
-  MACBaseAddress = PcdGet64(PcdPp2MACBaseAddress);
+  /*
+   * Handle device path of the controller.
+   */
+  MACBaseAddress = GetBaseMAC();;
   if (MACBaseAddress == 0) {
     Pp2DevicePath->Pp2Mac.MacAddress.Addr[3] += PcdGet8 (PcdBoardId);
   } else {
@@ -1164,10 +1189,8 @@ Pp2DxeSnpInstall (
     MACBaseAddressValidated = MACBaseAddress;
     V[0] &= 0xFE; /* Unicast */
     V[0] |= 0x2;  /* Locally administered */
-    V[7] = 0;
-    V[8] = 0;
     if (MACBaseAddressValidated != MACBaseAddress) {
-      PcdSet64 (PcdPp2MACBaseAddress, MACBaseAddressValidated);
+      SetBaseMAC (MACBaseAddressValidated);
     }
     /*
      * Just in case someone defines a BE EFI definition... this
@@ -1610,7 +1633,7 @@ VOID ReplaceDSDPackageMAC(
 
     Status = GetHandleUINT8(Sdt, EleHandle, &Val);
     ASSERT (Status == EFI_SUCCESS);
-    DEBUG((EFI_D_ERROR, "MAC[%u] 0x%x -> 0x%x\n", Index, ValOld, Val));
+    DEBUG((EFI_D_INFO, "MAC[%u] 0x%x -> 0x%x\n", Index, ValOld, Val));
   }
 }
 
@@ -1670,8 +1693,14 @@ OnReadyToBoot (
   UINTN                           TableKey;
   UINT64                          MACBaseAddress;
 
-  MACBaseAddress = PcdGet64(PcdPp2MACBaseAddress);
-  DEBUG((EFI_D_ERROR, "MACBaseAddress 0x%lx\n", MACBaseAddress));
+  MACBaseAddress = GetBaseMAC();
+  DEBUG((EFI_D_ERROR, "MACBaseAddress %02x:%02x:%02x:%02x:%02x:%02x\n",
+         *(((UINT8 *) &MACBaseAddress) + 0),
+         *(((UINT8 *) &MACBaseAddress) + 1),
+         *(((UINT8 *) &MACBaseAddress) + 2),
+         *(((UINT8 *) &MACBaseAddress) + 3),
+         *(((UINT8 *) &MACBaseAddress) + 4),
+         *(((UINT8 *) &MACBaseAddress) + 5)));
   Status = gBS->LocateProtocol (&gEfiAcpiSdtProtocolGuid, NULL, (VOID **)&Sdt);
   if (EFI_ERROR (Status)) {
     DEBUG((EFI_D_ERROR, "No ACPI SDT protocol to update the MAC addresses!\n"));
