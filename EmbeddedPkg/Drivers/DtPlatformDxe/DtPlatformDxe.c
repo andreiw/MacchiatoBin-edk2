@@ -32,6 +32,12 @@ typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        End;
 } HII_VENDOR_DEVICE_PATH;
 
+#ifdef DT_PLATFORM_DEFAULT_TO_ACPI
+STATIC BOOLEAN defaultACPI = TRUE;
+#else
+STATIC BOOLEAN defaultACPI = FALSE;
+#endif /* DT_PLATFORM_DEFAULT_TO_ACPI */
+
 STATIC HII_VENDOR_DEVICE_PATH     mDtPlatformDxeVendorDevicePath = {
   {
     {
@@ -130,18 +136,18 @@ DtPlatformDxeEntryPoint (
     Status = gRT->GetVariable(DT_ACPI_VARIABLE_NAME, &gDtPlatformFormSetGuid,
                     NULL, &BufferSize, &DtAcpiPref);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_WARN, "%a: no DT/ACPI preference found, defaulting to DT\n",
-        __FUNCTION__));
-      DtAcpiPref.Pref = DT_ACPI_SELECT_DT;
+      DEBUG ((DEBUG_WARN, "%a: no DT/ACPI preference found, defaulting to %a\n",
+              __FUNCTION__, defaultACPI ? "ACPI" : "DT"));
+      DtAcpiPref.Pref = defaultACPI ? DT_ACPI_SELECT_ACPI : DT_ACPI_SELECT_DT;
     }
   }
 
   if (!EFI_ERROR (Status) &&
       DtAcpiPref.Pref != DT_ACPI_SELECT_ACPI &&
       DtAcpiPref.Pref != DT_ACPI_SELECT_DT) {
-    DEBUG ((DEBUG_WARN, "%a: invalid value for %s, defaulting to DT\n",
-      __FUNCTION__, DT_ACPI_VARIABLE_NAME));
-    DtAcpiPref.Pref = DT_ACPI_SELECT_DT;
+    DEBUG ((DEBUG_WARN, "%a: invalid value for %s, defaulting to %a\n",
+            __FUNCTION__, DT_ACPI_VARIABLE_NAME, defaultACPI ? "ACPI" : "DT"));
+    DtAcpiPref.Pref = defaultACPI ? DT_ACPI_SELECT_ACPI : DT_ACPI_SELECT_DT;
     Status = EFI_INVALID_PARAMETER; // trigger setvar below
   }
 

@@ -670,7 +670,12 @@ DEFINE BUILD_COMMIT = current
   GCC:*_*_*_DLINK_FLAGS = -z common-page-size=0x10000
 
 [BuildOptions]
-  GCC:*_*_*_CC_FLAGS = -DBUILD_DATE=$(BUILD_DATE) -DBUILD_COMMIT=$(BUILD_COMMIT)
+DEFINE EXTRA_PP_FLAGS =
+!ifdef $(MVEBU_DEFAULT_TO_ACPI)
+DEFINE EXTRA_PP_FLAGS = $(EXTRA_PP_FLAGS) -DDT_PLATFORM_DEFAULT_TO_ACPI
+!endif
+  GCC:*_*_*_CC_FLAGS = -DBUILD_DATE=$(BUILD_DATE) -DBUILD_COMMIT=$(BUILD_COMMIT) $(EXTRA_PP_FLAGS)
+  GCC:*_*_*_VFRPP_FLAGS = $(EXTRA_PP_FLAGS)
 
 ################################################################################
 #
