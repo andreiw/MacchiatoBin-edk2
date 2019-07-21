@@ -97,7 +97,7 @@
 #define PCIE_GEN3_EQU_CTRL                                  0x8A8
 #define GEN3_EQU_EVAL_2MS_DISABLE                           BIT5
 
-#define PCIE_LINK_UP_TIMEOUT_US                             (40000)
+#define PCIE_LINK_UP_TIMEOUT_US                             (100 * 1000)
 
 STATIC
 VOID
@@ -204,7 +204,7 @@ ResetPciSlot (
                   PcieResetGpio->PinNumber,
                   PcieResetGpio->ActiveHigh
                   );
-  gBS->Stall (10 * 1000);
+  gBS->Stall (100 * 1000);
 
   Status = GpioProtocol->SetValue(
                   GpioProtocol,
@@ -212,7 +212,7 @@ ResetPciSlot (
                   PcieResetGpio->PinNumber,
                   !PcieResetGpio->ActiveHigh
                   );
-  gBS->Stall (20 * 1000);
+  gBS->Stall (100 * 1000);
 
   Status = gBS->CloseProtocol (
                   ProtHandle,
