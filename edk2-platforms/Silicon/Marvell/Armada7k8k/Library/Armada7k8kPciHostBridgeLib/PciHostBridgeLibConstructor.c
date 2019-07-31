@@ -168,7 +168,8 @@ WaitForLink (
 STATIC
 EFI_STATUS
 ResetPciSlot (
-  IN GPIO_PIN_DESC *PcieResetGpio
+  IN GPIO_PIN_DESC *PcieResetGpio,
+  IN BOOLEAN       Set
   )
 {
   MARVELL_GPIO_PROTOCOL     *GpioProtocol;
@@ -195,23 +196,27 @@ ResetPciSlot (
     return Status;
   }
 
-  //
-  // Reset the slot
-  //
-  Status = GpioProtocol->DirectionOutput(
+  if (Set) {
+    //
+    // Reset the slot
+    //
+    Status = GpioProtocol->DirectionOutput(
                   GpioProtocol,
                   PcieResetGpio->ControllerId,
                   PcieResetGpio->PinNumber,
                   PcieResetGpio->ActiveHigh
                   );
-  gBS->Stall (100 * 1000);
-
-  Status = GpioProtocol->SetValue(
+  } else {
+    //
+    // Enable slot.
+    //
+    Status = GpioProtocol->DirectionOutput(
                   GpioProtocol,
                   PcieResetGpio->ControllerId,
                   PcieResetGpio->PinNumber,
                   !PcieResetGpio->ActiveHigh
                   );
+  }
   gBS->Stall (100 * 1000);
 
   Status = gBS->CloseProtocol (
@@ -266,7 +271,7 @@ Armada7k8kPciHostBridgeLibConstructor (
 
     if (PcieDevDesc->HaveResetGpio == TRUE) {
       /* Reset PCIe slot */
-      Status = ResetPciSlot(&PcieDevDesc->PcieResetGpio);
+      Status = ResetPciSlot(&PcieDevDesc->PcieResetGpio, TRUE);
       if (EFI_ERROR (Status)) {
         DEBUG ((DEBUG_ERROR,
           "%a: Cannot reset Pcie Slot\n",
@@ -367,6 +372,17 @@ Armada7k8kPciHostBridgeLibConstructor (
               PCIE_INT_B_ASSERT_MASK |
               PCIE_INT_C_ASSERT_MASK |
               PCIE_INT_D_ASSERT_MASK);
+
+    if (PcieDevDesc->HaveResetGpio == TRUE) {
+      /* Enable PCIe slot */
+      Status = ResetPciSlot(&PcieDevDesc->PcieResetGpio, FALSE);
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR,
+          "%a: Cannot reset Pcie Slot\n",
+          __FUNCTION__));
+        return EFI_DEVICE_ERROR;
+      }
+    }
 
     WaitForLink (PcieBaseReg);
 
